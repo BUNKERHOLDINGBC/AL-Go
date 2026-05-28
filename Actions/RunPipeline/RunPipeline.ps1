@@ -422,6 +422,7 @@ try {
                         "packageName" = $appId
                         "version" = $version
                         "select" = $settings.nuGetFeedSelectMode
+                        "allowPrerelease" = $settings.nuGetFeedAllowPrerelease
                     }
                     if ($parameters.ContainsKey('CopyInstalledAppsToFolder')) {
                         $publishParams += @{
