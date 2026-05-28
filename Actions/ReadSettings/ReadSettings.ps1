@@ -51,6 +51,11 @@ if ($settings.versioningstrategy -ne -1) {
             $settings.appBuild = -1
             $settings.appRevision = $settings.runNumberOffset + [Int32]($ENV:GITHUB_RUN_NUMBER)
         }
+        14 { # Use BUILD from app.json and maxValue
+            OutputDebug "Applying versioning strategy 14: BUILD from app.json and maxValue"
+            $settings.appBuild = -1
+            $settings.appRevision = [Int32]::MaxValue
+        }
         15 { # Use maxValue and RUN_NUMBER
             OutputDebug "Applying versioning strategy 15: maxValue and RUN_NUMBER"
             $settings.appBuild = [Int32]::MaxValue

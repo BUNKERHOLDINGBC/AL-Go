@@ -1593,6 +1593,11 @@ function CreateDevEnv {
                     $appBuild = [Int32]([DateTime]::UtcNow.ToString('yyyyMMdd'))
                     $appRevision = [Int32]([DateTime]::UtcNow.ToString('HHmmss'))
                 }
+                14 {
+                    # Use maxValue
+                    $appBuild = 0
+                    $appRevision = [Int32]::MaxValue
+                }
                 15 {
                     # Use maxValue
                     $appBuild = [Int32]::MaxValue
