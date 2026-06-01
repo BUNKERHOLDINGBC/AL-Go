@@ -1984,8 +1984,10 @@ Function AnalyzeProjectDependencies {
             $foundDependencies = @()
             foreach($dependency in $dependencies) {
                 # Check whether dependency is already resolved by a previous build project
-                $depProject = @($projectsOrder | ForEach-Object { $_.Projects | Where-Object { $_ -ne $project -and $appDependencies."$_".apps -contains $dependency } })
+                Write-Host "Check if $dependency is already resolved by a previous build project"
+                $depProject = @($projectsOrder | ForEach-Object { $_.Projects | Where-Object { if ($_ -ne $project) { Write-Host "Dependencies for $project"; foreach($app in $appDependencies."$_".apps) { Write-Host "- $app" } }; $_ -ne $project -and $appDependencies."$_".apps -contains $dependency } })
                 if ($depProject.Count -gt 0) {
+                    Write-Host "It is!"
                     continue
                 }
                 # Find the project that contains the app for which the current project has a dependency
