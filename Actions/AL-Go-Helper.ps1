@@ -2095,9 +2095,9 @@ Function AnalyzeProjectDependencies {
                     continue
                 }
                 # Find the project that contains the app for which the current project has a dependency
-                $depProjects = @($projects | Where-Object { $_ -ne $project -and $appDependencies."$_".apps -contains $dependency })
+                $depProject = $projects | Where-Object { $_ -ne $project -and $appDependencies."$_".apps -contains $dependency } | Select-Object -First 1
                 # Add this project and all projects on which that project has a dependency to the list of dependencies for the current project
-                foreach($depProject in $depProjects) {
+                if ($depProject) {
                     Write-Host "Add $depProject as a dependency for $project"
                     $foundDependencies += $depProject
                     if ($projectDependencies.Keys -contains $depProject) {
