@@ -2089,7 +2089,7 @@ Function AnalyzeProjectDependencies {
             foreach($dependency in $dependencies) {
                 # Check whether dependency is already resolved by a previous build project
                 Write-Host "Check if $dependency is already resolved by a previous build project"
-                $depProject = @($projectsOrder | ForEach-Object { $_.Projects | Where-Object { if ($_ -ne $project) { $_ -ne $project -and $appDependencies."$_".apps -contains $dependency } })
+                $depProject = @($projectsOrder | ForEach-Object { $_.Projects | Where-Object { $_ -ne $project -and $appDependencies."$_".apps -contains $dependency } })
                 if ($depProject.Count -gt 0) {
                     Write-Host "It is!"
                     continue
