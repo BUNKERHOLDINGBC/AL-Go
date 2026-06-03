@@ -57,6 +57,93 @@ function ConnectAzStorageAccount {
     return $azStorageContext
 }
 
+function Compare-AppFiles {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $AppFile1,
+        [Parameter(Mandatory = $true)]
+        [string] $AppFile2
+    )
+
+    if (-not (Test-Path $AppFile1)) {
+        throw "App file not found: $AppFile1"
+    }
+    if (-not (Test-Path $AppFile2)) {
+        throw "App file not found: $AppFile2"
+    }
+
+    $tempFolder1 = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+    $tempFolder2 = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+
+    try {
+        Extract-AppFileToFolder -appFilename $AppFile1 -appFolder $tempFolder1 -generateAppJson
+        Extract-AppFileToFolder -appFilename $AppFile2 -appFolder $tempFolder2 -generateAppJson
+
+        $files1 = Get-ChildItem -Path $tempFolder1 -Recurse -File | ForEach-Object {
+            $_.FullName.Substring($tempFolder1.Length)
+        }
+        $files2 = Get-ChildItem -Path $tempFolder2 -Recurse -File | ForEach-Object {
+            $_.FullName.Substring($tempFolder2.Length)
+        }
+
+        $ignoreFiles = @('DocComments.xml', 'MediaIdListing.xml', 'SymbolReference.json', '[Content_Types].xml', 'NavxManifest.xml')
+        $allFiles = ($files1 + $files2) | Select-Object -Unique | Where-Object {
+            $fileName = [System.IO.Path]::GetFileName($_)
+            $fileName -notin $ignoreFiles
+        }
+        $differentFiles = @()
+
+        foreach ($relativePath in $allFiles) {
+            $file1Path = Join-Path $tempFolder1 $relativePath
+            $file2Path = Join-Path $tempFolder2 $relativePath
+
+            if (-not (Test-Path $file1Path)) {
+                $differentFiles += $relativePath
+                continue
+            }
+            if (-not (Test-Path $file2Path)) {
+                $differentFiles += $relativePath
+                continue
+            }
+
+            $hash1 = (Get-FileHash -Path $file1Path -Algorithm SHA256).Hash
+            $hash2 = (Get-FileHash -Path $file2Path -Algorithm SHA256).Hash
+
+            if ($hash1 -ne $hash2) {
+                $fileName = [System.IO.Path]::GetFileName($relativePath)
+                if ($fileName -eq 'app.json') {
+                    $json1 = Get-Content -Path $file1Path -Encoding UTF8 | ConvertFrom-Json
+                    $json2 = Get-Content -Path $file2Path -Encoding UTF8 | ConvertFrom-Json
+                    $json1.version = $null
+                    $json2.version = $null
+                    $normalized1 = $json1 | ConvertTo-Json -Depth 99
+                    $normalized2 = $json2 | ConvertTo-Json -Depth 99
+                    if ($normalized1 -ne $normalized2) {
+                        $differentFiles += $relativePath
+                    }
+                }
+                else {
+                    $differentFiles += $relativePath
+                }
+            }
+        }
+
+        if ($differentFiles.Count -gt 0) {
+            Write-Host "Files that differ:"
+            foreach ($relativePath in $differentFiles) {
+                Write-Host "  $relativePath"
+            }
+            return $false
+        }
+
+        return $true
+    }
+    finally {
+        if (Test-Path $tempFolder1) { Remove-Item $tempFolder1 -Recurse -Force }
+        if (Test-Path $tempFolder2) { Remove-Item $tempFolder2 -Recurse -Force }
+    }
+}
+
 . (Join-Path -Path $PSScriptRoot -ChildPath "../AL-Go-Helper.ps1" -Resolve)
 Import-Module (Join-Path $PSScriptRoot "Deliver.psm1") -DisableNameChecking
 DownloadAndImportBcContainerHelper
@@ -265,15 +352,31 @@ foreach ($thisProject in $sortedProjectList) {
                         if ($preReleaseTag) {
                             $searchVersion += "-$preReleaseTag"
                         }
+                        
                         $feed, $packageId, $packageVersion = Find-BcNugetPackage -nuGetServerUrl $nuGetServerUrl -nuGetToken $nuGetToken -packageName $packageName -version $searchVersion -select Exact -allowPrerelease
                         if (-not $feed) {
-                            $parameters = @{
-                                "gitHubRepository" = "$ENV:GITHUB_SERVER_URL/$ENV:GITHUB_REPOSITORY"
-                                "preReleaseTag"    = $preReleaseTag
-                                "appFile"          = $_.FullName
+                            $pushNewPackage = $true
+                            # Exact version not found, check whether the latest version is the same codebase
+                            $packageFolder = Get-BcNuGetPackage  -nuGetServerUrl $nuGetServerUrl -nuGetToken $nuGetToken -packageName $packageName -version $searchVersion -select Latest -allowPrerelease:($preReleaseTag -ne '')
+                            if ($packageFolder) {
+                                $appFile = Get-ChildItem -Path (Join-Path $packageFolder.FullName "*.app") | Select-Object -First 1
+                                if ($appFile) {
+                                    $pushNewPackage = !(Compare-AppFiles -AppFile1 $_.FullName -AppFile2 $appFile)
+                                    if (-not $pushNewPackage) {
+                                        Write-Host "The last package $packageName pushblished is identical to the one we are trying to publish"
+                                    }
+                                }
                             }
-                            $package = New-BcNuGetPackage @parameters
-                            Push-BcNuGetPackage -nuGetServerUrl $nuGetServerUrl -nuGetToken $nuGetToken -bcNuGetPackage $package
+                            if (pushnewPackage) {
+                                Write-Host "Pushing new package $packageName to $nuGetServerUrl"
+                                $parameters = @{
+                                    "gitHubRepository" = "$ENV:GITHUB_SERVER_URL/$ENV:GITHUB_REPOSITORY"
+                                    "preReleaseTag"    = $preReleaseTag
+                                    "appFile"          = $_.FullName
+                                }
+                                $package = New-BcNuGetPackage @parameters
+                                Push-BcNuGetPackage -nuGetServerUrl $nuGetServerUrl -nuGetToken $nuGetToken -bcNuGetPackage $package
+                            }
                             $alreadyDeliveredPackages += $packageName
                         }
                     }
