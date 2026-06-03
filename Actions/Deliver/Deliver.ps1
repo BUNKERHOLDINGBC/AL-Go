@@ -357,7 +357,7 @@ foreach ($thisProject in $sortedProjectList) {
                         if (-not $feed) {
                             $pushNewPackage = $true
                             # Exact version not found, check whether the latest version is the same codebase
-                            $packageFolder = Get-BcNuGetPackage  -nuGetServerUrl $nuGetServerUrl -nuGetToken $nuGetToken -packageName $packageName -version $searchVersion -select Latest -allowPrerelease:($preReleaseTag -ne '')
+                            $packageFolder = Get-BcNuGetPackage  -nuGetServerUrl $nuGetServerUrl -nuGetToken $nuGetToken -packageName $packageName -select Latest -allowPrerelease:($preReleaseTag -ne '')
                             if ($packageFolder) {
                                 $appFile = Get-ChildItem -Path (Join-Path $packageFolder.FullName "*.app") | Select-Object -First 1
                                 if ($appFile) {
