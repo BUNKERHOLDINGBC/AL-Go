@@ -360,7 +360,7 @@ foreach ($thisProject in $sortedProjectList) {
                             # Exact version not found, check whether the latest version is the same codebase
                             $packageFolder = Get-BcNuGetPackage  -nuGetServerUrl $nuGetServerUrl -nuGetToken $nuGetToken -packageName $packageName -select Latest -allowPrerelease:($preReleaseTag -ne '')
                             if ($packageFolder) {
-                                $oldAppFile = Get-ChildItem -Path (Join-Path $packageFolder.FullName "*.app") | Select-Object -First 1
+                                $oldAppFile = Get-ChildItem -Path (Join-Path $packageFolder "*.app") | Select-Object -First 1
                                 if ($oldAppFile) {
                                     $pushNewPackage = !(Compare-AppFiles -AppFile1 $newAppFile -AppFile2 $oldAppFile.FullName)
                                     if (-not $pushNewPackage) {
