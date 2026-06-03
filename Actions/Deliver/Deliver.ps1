@@ -342,7 +342,8 @@ foreach ($thisProject in $sortedProjectList) {
             }
             elseif ($folder.Count -eq 1) {
                 Get-Item -Path (Join-Path $folder[0] "*.app") | ForEach-Object {
-                    $appJson = Get-AppJsonFromAppFile -appFile $_.FullName
+                    $newAppFile = $_.FullName
+                    $appJson = Get-AppJsonFromAppFile -appFile $newAppFile
                     $packageName = Get-BcNuGetPackageId -publisher $appJson.publisher -name $appJson.name -id $appJson.id -version $appJson.version
                     if ($alreadyDeliveredPackages -contains $packageName) {
                         Write-Host "Package $packageName has already been delivered in this run, skipping"
@@ -359,9 +360,9 @@ foreach ($thisProject in $sortedProjectList) {
                             # Exact version not found, check whether the latest version is the same codebase
                             $packageFolder = Get-BcNuGetPackage  -nuGetServerUrl $nuGetServerUrl -nuGetToken $nuGetToken -packageName $packageName -select Latest -allowPrerelease:($preReleaseTag -ne '')
                             if ($packageFolder) {
-                                $appFile = Get-ChildItem -Path (Join-Path $packageFolder.FullName "*.app") | Select-Object -First 1
-                                if ($appFile) {
-                                    $pushNewPackage = !(Compare-AppFiles -AppFile1 $_.FullName -AppFile2 $appFile)
+                                $oldAppFile = Get-ChildItem -Path (Join-Path $packageFolder.FullName "*.app") | Select-Object -First 1
+                                if ($oldAppFile) {
+                                    $pushNewPackage = !(Compare-AppFiles -AppFile1 $newAppFile -AppFile2 $oldAppFile.FullName)
                                     if (-not $pushNewPackage) {
                                         Write-Host "The last package $packageName pushblished is identical to the one we are trying to publish"
                                     }
@@ -372,7 +373,7 @@ foreach ($thisProject in $sortedProjectList) {
                                 $parameters = @{
                                     "gitHubRepository" = "$ENV:GITHUB_SERVER_URL/$ENV:GITHUB_REPOSITORY"
                                     "preReleaseTag"    = $preReleaseTag
-                                    "appFile"          = $_.FullName
+                                    "appFile"          = $newAppFile
                                 }
                                 $package = New-BcNuGetPackage @parameters
                                 Push-BcNuGetPackage -nuGetServerUrl $nuGetServerUrl -nuGetToken $nuGetToken -bcNuGetPackage $package
