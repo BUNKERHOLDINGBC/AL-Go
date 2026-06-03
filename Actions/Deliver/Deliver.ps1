@@ -367,7 +367,7 @@ foreach ($thisProject in $sortedProjectList) {
                                     }
                                 }
                             }
-                            if (pushnewPackage) {
+                            if ($pushNewPackage) {
                                 Write-Host "Pushing new package $packageName to $nuGetServerUrl"
                                 $parameters = @{
                                     "gitHubRepository" = "$ENV:GITHUB_SERVER_URL/$ENV:GITHUB_REPOSITORY"
