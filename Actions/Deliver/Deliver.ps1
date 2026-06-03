@@ -86,7 +86,7 @@ function Compare-AppFiles {
             $_.FullName.Substring($tempFolder2.Length)
         }
 
-        $ignoreFiles = @('DocComments.xml', 'MediaIdListing.xml', 'SymbolReference.json', '[Content_Types].xml', 'NavxManifest.xml')
+        $ignoreFiles = @('navigation.xml', 'DocComments.xml', 'MediaIdListing.xml', 'SymbolReference.json', '[Content_Types].xml', 'NavxManifest.xml')
         $allFiles = ($files1 + $files2) | Select-Object -Unique | Where-Object {
             $fileName = [System.IO.Path]::GetFileName($_)
             $fileName -notin $ignoreFiles
