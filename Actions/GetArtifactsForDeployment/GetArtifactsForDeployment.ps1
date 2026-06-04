@@ -6,7 +6,9 @@ Param(
     [Parameter(HelpMessage = "Folder in which the artifacts will be downloaded", Mandatory = $true)]
     [string] $artifactsFolder,
     [Parameter(HelpMessage = "Build mode used when building the artifacts", Mandatory = $false)]
-    [string] $buildMode = 'Default'
+    [string] $buildMode = 'Default',
+    [Parameter(HelpMessage = "Projects to download", Mandatory = $false)]
+    [string] $projects = '*'
 )
 
 Import-Module (Join-Path -Path $PSScriptRoot "GetArtifactsForDeployment.psm1")
@@ -18,9 +20,6 @@ $buildModePrefix = $buildMode
 if ($buildMode -eq 'Default') {
     $buildModePrefix = ''
 }
-
-# Get artifacts for all projects
-$projects = "*"
 
 # Default artifact types (used for releases which only support default buildMode)
 $defaultArtifactTypes = @("Apps","TestApps","Dependencies","PowerPlatformSolution")

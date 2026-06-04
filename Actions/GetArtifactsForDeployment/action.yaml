@@ -1,5 +1,6 @@
 name: Get Artifacts for deployment
 author: Microsoft Corporation
+description: Get the artifacts for a specific deployment
 inputs:
   shell:
     description: Shell in which you want to run the action (powershell or pwsh)
@@ -19,6 +20,10 @@ inputs:
     description: Build mode used when building the artifacts
     required: false
     default: 'Default'
+  projects:
+    description: Projects to download
+    required: false
+    default: '*'
 runs:
   using: composite
   steps:
