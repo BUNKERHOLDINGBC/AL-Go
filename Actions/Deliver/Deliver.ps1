@@ -79,6 +79,15 @@ function Compare-AppFiles {
         Extract-AppFileToFolder -appFilename $AppFile1 -appFolder $tempFolder1 -generateAppJson
         Extract-AppFileToFolder -appFilename $AppFile2 -appFolder $tempFolder2 -generateAppJson
 
+        # Expand any .zip files inside the extracted folders
+        foreach ($folder in @($tempFolder1, $tempFolder2)) {
+            Get-ChildItem -Path $folder -Recurse -Filter '*.zip' | ForEach-Object {
+                $extractPath = Join-Path $_.DirectoryName $_.BaseName
+                Expand-Archive -Path $_.FullName -DestinationPath $extractPath -Force
+                Remove-Item $_.FullName -Force
+            }
+        }
+
         $files1 = Get-ChildItem -Path $tempFolder1 -Recurse -File | ForEach-Object {
             $_.FullName.Substring($tempFolder1.Length)
         }
