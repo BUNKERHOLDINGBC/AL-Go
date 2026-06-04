@@ -29,7 +29,7 @@ $defaultCICDPushBranches = @( 'main', 'release/*', 'feature/*' )
 $defaultCICDPullRequestBranches = @( 'main' )
 $defaultBcContainerHelperVersion = "https://github.com/BUNKERHOLDINGBC/navcontainerhelper/archive/refs/heads/main.zip"
 $notSecretProperties = @("Scopes","TenantId","BlobName","ContainerName","StorageAccountName","ServerUrl","ppUserName","GitHubAppClientId","EnvironmentName")
-
+$PRRevisionOffset = 100000000
 $runAlPipelineOverrides = @(
     "DockerPull"
     "NewBcContainer"
@@ -1701,7 +1701,7 @@ function CreateDevEnv {
                 14 {
                     # Use maxValue
                     $appBuild = 0
-                    $appRevision = [Int32]::MaxValue
+                    $appRevision = $PRRevisionOffset
                 }
                 15 {
                     # Use maxValue

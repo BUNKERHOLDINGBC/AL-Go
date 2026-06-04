@@ -35,7 +35,7 @@ if ($settings.appBuild -eq [int32]::MaxValue) {
     OutputDebug "App build is set to maxValue, applying versioning strategy 15 (maxValue + runNumber)"
     $settings.versioningStrategy = 15
 }
-elseif ($settings.appRevision -eq [int32]::MaxValue) {
+elseif ($settings.appRevision -eq ($PRRevisionOffset + [Int32]($ENV:GITHUB_RUN_NUMBER))) {
     OutputDebug "App revision is set to maxValue, applying versioning strategy 14 (BUILD from app.json and maxValue)"
     $settings.versioningStrategy = 14
 }
@@ -63,7 +63,7 @@ if ($settings.versioningstrategy -ne -1) {
         14 { # Use BUILD from app.json and maxValue
             OutputDebug "Applying versioning strategy 14: BUILD from app.json and maxValue"
             $settings.appBuild = -1
-            $settings.appRevision = [Int32]::MaxValue
+            $settings.appRevision = $PRRevisionOffset + [Int32]($ENV:GITHUB_RUN_NUMBER)
         }
         15 { # Use maxValue and RUN_NUMBER
             OutputDebug "Applying versioning strategy 15: maxValue and RUN_NUMBER"
