@@ -174,6 +174,9 @@ Write-Host "Artifacts $artifacts"
 Write-Host "Projects:"
 $sortedProjectList | Out-Host
 $alreadyDeliveredPackages = @()
+# Manifest of the production apps which have actually been delivered (only used for NuGet delivery)
+# Script scope is used as the manifest is updated from within nested script blocks
+$script:deliveryManifest = @()
 
 $secrets = $env:Secrets | ConvertFrom-Json
 foreach ($thisProject in $sortedProjectList) {
@@ -344,6 +347,7 @@ foreach ($thisProject in $sortedProjectList) {
         # Do not search trusted NuGet feeds for packages when looking for whether packages have been delivered
         $bcContainerHelperConfig.TrustedNuGetFeeds = @()
         'Apps','TestApps' | ForEach-Object {
+            $artifactType = $_
             $folder = @(Get-ChildItem -Path (Join-Path $artifactsFolder "$project-$refname-$($_)-*.*.*.*") | Where-Object { $_.PSIsContainer })
             if ($folder.Count -gt 1) {
                 $folder | Out-Host
@@ -364,6 +368,7 @@ foreach ($thisProject in $sortedProjectList) {
                         }
                         
                         $feed, $packageId, $packageVersion = Find-BcNugetPackage -nuGetServerUrl $nuGetServerUrl -nuGetToken $nuGetToken -packageName $packageName -version $searchVersion -select Exact -allowPrerelease
+                        $packagePushed = $false
                         if (-not $feed) {
                             $pushNewPackage = $true
                             # Exact version not found, check whether the latest version is the same codebase
@@ -386,9 +391,12 @@ foreach ($thisProject in $sortedProjectList) {
                                 }
                                 $package = New-BcNuGetPackage @parameters
                                 Push-BcNuGetPackage -nuGetServerUrl $nuGetServerUrl -nuGetToken $nuGetToken -bcNuGetPackage $package
+                                # The package was pushed successfully - include it in the delivery manifest
+                                $packagePushed = $true
                             }
                             $alreadyDeliveredPackages += $packageName
                         }
+                        $script:deliveryManifest = Add-DeliveryManifestEntry -Manifest $script:deliveryManifest -ArtifactType $artifactType -Pushed $packagePushed -AppJson $appJson -Project $thisProject -PackageName $packageName -DeliveryTarget 'NuGet'
                     }
                 }
             }
@@ -563,4 +571,15 @@ foreach ($thisProject in $sortedProjectList) {
     if ($artifactsFolderCreated) {
         Remove-Item $artifactsFolder -Recurse -Force
     }
+}
+
+if ($deliveryTarget -eq 'NuGet') {
+    # Write a manifest of the production apps delivered to NuGet - also when no packages were delivered (in which case the manifest is empty)
+    $manifestFolder = $ENV:RUNNER_TEMP
+    if (!$manifestFolder) {
+        $manifestFolder = [System.IO.Path]::GetTempPath()
+    }
+    $manifestPath = Save-DeliveryManifest -Manifest $script:deliveryManifest -Path (Join-Path $manifestFolder "DeliveryManifest-NuGet.json")
+    Write-Host "Delivery manifest with $($script:deliveryManifest.Count) package(s) written to $manifestPath"
+    Add-Content -Encoding UTF8 -Path $env:GITHUB_OUTPUT -Value "manifestPath=$manifestPath"
 }

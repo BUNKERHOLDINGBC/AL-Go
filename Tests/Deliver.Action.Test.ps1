@@ -19,6 +19,7 @@ Describe "Deliver Action Tests" {
 
     It 'Test action.yaml matches script' {
         $outputs = [ordered]@{
+            "manifestPath" = "Path to the JSON manifest of the production apps delivered to NuGet (empty array if no packages were delivered)"
         }
         YamlTest -scriptRoot $scriptRoot -actionName $actionName -actionScript $actionScript -outputs $outputs
     }

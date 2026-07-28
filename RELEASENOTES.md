@@ -1,5 +1,26 @@
 ## v9.1
 
+### NuGet delivery manifest
+
+The `Deliver` action now writes a JSON manifest of the production apps that were actually delivered to NuGet and exposes the file path as a new `manifestPath` output. The manifest is written for every NuGet delivery - if nothing was delivered, an empty array is written.
+
+Only apps from the `Apps` artifact folder are included. Test apps, dependencies, packages where the exact version already existed on the feed, packages that were skipped because the latest package on the feed was identical, and failed pushes are all excluded.
+
+Each entry contains `id`, `name`, `publisher`, `version`, `project`, `packageName` and `deliveryTarget` (always `NuGet`).
+
+```yaml
+- name: Deliver
+  id: Deliver
+  uses: microsoft/AL-Go-Actions/Deliver@main
+  ...
+
+- name: Use manifest
+  shell: pwsh
+  run: Get-Content -Path '${{ steps.Deliver.outputs.manifestPath }}' -Encoding UTF8
+```
+
+The change is additive - existing workflows that ignore the output are unaffected.
+
 ### Resilient Pull Request Status Check for large builds
 
 The Pull Request Status Check action no longer fails on builds with more than one page of jobs (more than 100 jobs). The jobs API call now uses `--slurp` so multi-page responses are parsed as a single JSON array (previously `gh api --paginate | ConvertFrom-Json` failed with "Invalid JSON primitive" when more than one page was returned). The call is also retried, and requests a smaller page size, to tolerate the intermittent HTTP 502 responses that the GitHub jobs endpoint returns for large builds.

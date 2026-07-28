@@ -31,11 +31,16 @@ inputs:
     description: Promote AppSource App to Go Live?
     required: false
     default: 'false'
+outputs:
+  manifestPath:
+    description: Path to the JSON manifest of the production apps delivered to NuGet (empty array if no packages were delivered)
+    value: ${{ steps.deliver.outputs.manifestPath }}
 runs:
   using: composite
   steps:
     - name: run
       shell: ${{ inputs.shell }}
+      id: deliver
       env:
         _token: ${{ inputs.token }}
         _projects: ${{ inputs.projects }}
