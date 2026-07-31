@@ -6,6 +6,15 @@ Describe "Deliver Module - Delivery Manifest Tests" {
     BeforeAll {
         Import-Module (Join-Path $PSScriptRoot "../Actions/Deliver/Deliver.psm1" -Resolve) -DisableNameChecking -Force
 
+        $originalGitHubEnvironment = @{}
+        @('GITHUB_REPOSITORY', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT', 'GITHUB_SHA') | ForEach-Object {
+            $originalGitHubEnvironment[$_] = [Environment]::GetEnvironmentVariable($_)
+        }
+        $ENV:GITHUB_REPOSITORY = 'microsoft/AL-Go'
+        $ENV:GITHUB_RUN_ID = '123456789'
+        $ENV:GITHUB_RUN_ATTEMPT = '2'
+        $ENV:GITHUB_SHA = '0123456789abcdef0123456789abcdef01234567'
+
         function New-TestAppJson {
             Param(
                 [string] $id = '11111111-1111-1111-1111-111111111111',
@@ -18,6 +27,17 @@ Describe "Deliver Module - Delivery Manifest Tests" {
                 name      = $name
                 publisher = $publisher
                 version   = $version
+            }
+        }
+    }
+
+    AfterAll {
+        $originalGitHubEnvironment.Keys | ForEach-Object {
+            if ($null -eq $originalGitHubEnvironment[$_]) {
+                Remove-Item -Path "Env:$_" -ErrorAction SilentlyContinue
+            }
+            else {
+                Set-Item -Path "Env:$_" -Value $originalGitHubEnvironment[$_]
             }
         }
     }
@@ -85,23 +105,35 @@ Describe "Deliver Module - Delivery Manifest Tests" {
         $manifest[0].name | Should -Be 'My App'
     }
 
-    It 'writes an empty manifest when nothing was delivered' {
+    It 'writes an empty manifest envelope with matching provenance when nothing was delivered' {
         $path = Join-Path $manifestFolder 'DeliveryManifest-NuGet.json'
         $result = Save-DeliveryManifest -Manifest @() -Path $path
 
         $result | Should -Be $path
         Test-Path -Path $path | Should -Be $true
-        (Get-Content -Path $path -Encoding UTF8 -Raw).Trim() | Should -Be '[]'
-        @(Get-Content -Path $path -Encoding UTF8 -Raw | ConvertFrom-Json).Count | Should -Be 0
+        $json = Get-Content -Path $path -Encoding UTF8 -Raw
+        $document = $json | ConvertFrom-Json
+        @($document.PSObject.Properties.Name) | Should -Be @('schemaVersion', 'repository', 'runId', 'runAttempt', 'headSha', 'deliveryTarget', 'apps')
+        $document.schemaVersion | Should -Be 1
+        $document.repository | Should -Be 'microsoft/AL-Go'
+        $document.runId | Should -Be '123456789'
+        $document.runAttempt | Should -Be '2'
+        $document.headSha | Should -Be '0123456789abcdef0123456789abcdef01234567'
+        $document.deliveryTarget | Should -Be 'NuGet'
+        @($document.apps).Count | Should -Be 0
+        $json | Should -Match '(?s)"apps"\s*:\s*\[\s*\]'
     }
 
-    It 'writes a manifest with a single entry as a JSON array with all fields' {
+    It 'writes a manifest with a single entry as an array under apps with all fields' {
         $manifest = Add-DeliveryManifestEntry -Manifest @() -ArtifactType 'Apps' -Pushed $true -AppJson (New-TestAppJson) -Project 'MyProject' -PackageName 'Contoso.MyApp.symbols.11111111-1111-1111-1111-111111111111'
         $path = Join-Path $manifestFolder 'DeliveryManifest-NuGet.json'
         Save-DeliveryManifest -Manifest $manifest -Path $path | Out-Null
 
-        (Get-Content -Path $path -Encoding UTF8 -Raw).TrimStart() | Should -BeLike '`[*'
-        $entries = @(Get-Content -Path $path -Encoding UTF8 -Raw | ConvertFrom-Json)
+        $json = Get-Content -Path $path -Encoding UTF8 -Raw
+        $document = $json | ConvertFrom-Json
+        $json.TrimStart() | Should -BeLike '{*'
+        $json | Should -Match '(?s)"apps"\s*:\s*\['
+        $entries = @($document.apps)
         $entries.Count | Should -Be 1
         $entry = $entries[0]
         @($entry.PSObject.Properties.Name) | Should -Be @('id', 'name', 'publisher', 'version', 'project', 'packageName', 'deliveryTarget')
@@ -114,13 +146,14 @@ Describe "Deliver Module - Delivery Manifest Tests" {
         $entry.deliveryTarget | Should -Be 'NuGet'
     }
 
-    It 'writes a manifest with multiple entries' {
+    It 'writes a manifest with multiple entries as an array under apps' {
         $manifest = Add-DeliveryManifestEntry -Manifest @() -ArtifactType 'Apps' -Pushed $true -AppJson (New-TestAppJson) -Project 'MyProject' -PackageName 'Contoso.MyApp.symbols.11111111-1111-1111-1111-111111111111'
         $manifest = Add-DeliveryManifestEntry -Manifest $manifest -ArtifactType 'Apps' -Pushed $true -AppJson (New-TestAppJson -id '44444444-4444-4444-4444-444444444444' -name 'My Other App') -Project 'MyOtherProject' -PackageName 'Contoso.MyOtherApp.symbols.44444444-4444-4444-4444-444444444444'
         $path = Join-Path $manifestFolder 'DeliveryManifest-NuGet.json'
         Save-DeliveryManifest -Manifest $manifest -Path $path | Out-Null
 
-        $entries = @(Get-Content -Path $path -Encoding UTF8 -Raw | ConvertFrom-Json)
+        $document = Get-Content -Path $path -Encoding UTF8 -Raw | ConvertFrom-Json
+        $entries = @($document.apps)
         $entries.Count | Should -Be 2
         $entries[1].project | Should -Be 'MyOtherProject'
         $entries[1].deliveryTarget | Should -Be 'NuGet'

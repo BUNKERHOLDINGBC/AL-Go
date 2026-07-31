@@ -33,7 +33,7 @@ inputs:
     default: 'false'
 outputs:
   manifestPath:
-    description: Path to the JSON manifest of the production apps delivered to NuGet (empty array if no packages were delivered)
+    description: Path to the local JSON manifest of the production apps delivered to NuGet (apps is empty if no packages were delivered)
     value: ${{ steps.deliver.outputs.manifestPath }}
 runs:
   using: composite
@@ -53,6 +53,13 @@ runs:
         ${{ github.action_path }}/../Invoke-AlGoAction.ps1 -ActionName "Deliver" -Action {
           ${{ github.action_path }}/Deliver.ps1 -token $ENV:_token -projects $ENV:_projects -deliveryTarget $ENV:_deliveryTarget -artifacts $ENV:_artifacts -type $ENV:_type -atypes $ENV:_atypes -goLive ($ENV:_goLive -eq 'true')
         }
+    - name: Publish NuGet delivery manifest
+      if: ${{ inputs.deliveryTarget == 'NuGet' }}
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: ado-delivery-manifest-NuGet-${{ github.run_id }}-${{ github.run_attempt }}
+        path: ${{ steps.deliver.outputs.manifestPath }}
+        if-no-files-found: error
 branding:
   icon: terminal
   color: blue

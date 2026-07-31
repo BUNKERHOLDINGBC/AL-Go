@@ -2,24 +2,35 @@
 
 ### NuGet delivery manifest
 
-The `Deliver` action now writes a JSON manifest of the production apps that were actually delivered to NuGet and exposes the file path as a new `manifestPath` output. The manifest is written for every NuGet delivery - if nothing was delivered, an empty array is written.
+The `Deliver` action now writes a JSON manifest of the production apps that were actually delivered to NuGet and publishes it as the workflow artifact `ado-delivery-manifest-NuGet-<run ID>-<run attempt>`. The artifact is published for every NuGet delivery, including when no packages were delivered.
 
 Only apps from the `Apps` artifact folder are included. Test apps, dependencies, packages where the exact version already existed on the feed, packages that were skipped because the latest package on the feed was identical, and failed pushes are all excluded.
 
-Each entry contains `id`, `name`, `publisher`, `version`, `project`, `packageName` and `deliveryTarget` (always `NuGet`).
+The manifest uses this versioned envelope. `apps` is always an array and is empty when no packages were delivered.
 
-```yaml
-- name: Deliver
-  id: Deliver
-  uses: microsoft/AL-Go-Actions/Deliver@main
-  ...
-
-- name: Use manifest
-  shell: pwsh
-  run: Get-Content -Path '${{ steps.Deliver.outputs.manifestPath }}' -Encoding UTF8
+```json
+{
+  "schemaVersion": 1,
+  "repository": "<GITHUB_REPOSITORY>",
+  "runId": "<GITHUB_RUN_ID>",
+  "runAttempt": "<GITHUB_RUN_ATTEMPT>",
+  "headSha": "<GITHUB_SHA>",
+  "deliveryTarget": "NuGet",
+  "apps": [
+    {
+      "id": "...",
+      "name": "...",
+      "publisher": "...",
+      "version": "...",
+      "project": "...",
+      "packageName": "...",
+      "deliveryTarget": "NuGet"
+    }
+  ]
+}
 ```
 
-The change is additive - existing workflows that ignore the output are unaffected.
+The additive `manifestPath` action output remains available to steps in the same Deliver job, but it points to runner-local storage. Separate workflows, including `workflow_run` consumers, must download the published artifact instead. Existing standard AL-Go CI/CD workflows and callers that ignore `manifestPath` require no changes.
 
 ### Resilient Pull Request Status Check for large builds
 

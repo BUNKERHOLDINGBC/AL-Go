@@ -150,8 +150,8 @@ function Add-DeliveryManifestEntry {
 Save the delivery manifest as a JSON file
 
 .DESCRIPTION
-Writes the delivery manifest to a JSON file. The manifest is always written as a JSON array,
-also when no packages were delivered - in that case an empty array is written.
+Writes the delivery manifest to a JSON file using a versioned envelope containing GitHub run
+provenance. The apps property is always written as a JSON array, including when no packages were delivered.
 
 .PARAMETER Manifest
 The delivery manifest to save
@@ -182,16 +182,16 @@ function Save-DeliveryManifest {
         New-Item -Path $folder -ItemType Directory -Force | Out-Null
     }
 
-    if ($manifestEntries.Count -eq 0) {
-        $json = '[]'
+    $deliveryManifest = [PSCustomObject]@{
+        "schemaVersion"  = 1
+        "repository"     = "$ENV:GITHUB_REPOSITORY"
+        "runId"          = "$ENV:GITHUB_RUN_ID"
+        "runAttempt"     = "$ENV:GITHUB_RUN_ATTEMPT"
+        "headSha"        = "$ENV:GITHUB_SHA"
+        "deliveryTarget" = "NuGet"
+        "apps"           = [object[]] $manifestEntries
     }
-    else {
-        # Ensure that a manifest with a single entry is also written as a JSON array
-        $json = ConvertTo-Json -InputObject @($manifestEntries) -Depth 10
-        if (-not $json.TrimStart().StartsWith('[')) {
-            $json = "[$json]"
-        }
-    }
+    $json = ConvertTo-Json -InputObject $deliveryManifest -Depth 10
 
     Set-Content -Path $Path -Value $json -Encoding UTF8
     return $Path

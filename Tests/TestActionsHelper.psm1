@@ -53,7 +53,8 @@ function YamlTest {
         [string] $scriptRoot,
         [string] $actionName,
         [string] $actionScript,
-        $outputs = @{}
+        $outputs = @{},
+        [string[]] $additionalSteps = @()
     )
 
     $emptyActionScript = "function emptyAction {`n[CmdletBinding()]`nParam()`n}`n"
@@ -146,6 +147,9 @@ function YamlTest {
     $yaml.AppendLine("        `${{ github.action_path }}/../Invoke-AlGoAction.ps1 -ActionName `"$actionName`" -Action {") | Out-Null
     $yaml.AppendLine("          `${{ github.action_path }}/$actionName.ps1$parameterString") | Out-Null
     $yaml.AppendLine("        }") | Out-Null
+    $additionalSteps | ForEach-Object {
+        $yaml.AppendLine($_) | Out-Null
+    }
     $yaml.AppendLine("branding:") | Out-Null
     $yaml.AppendLine("  icon: terminal") | Out-Null
     $yaml.Append("  color: blue") | Out-Null
