@@ -33,8 +33,8 @@ inputs:
     default: 'false'
 outputs:
   manifestPath:
-    description: Path to the local JSON manifest of the production apps delivered to NuGet (apps is empty if no packages were delivered)
-    value: ${{ steps.deliver.outputs.manifestPath }}
+    description: Path to the local JSON manifest of the production apps delivered to NuGet (empty for non-NuGet deliveries; apps is empty if no packages were delivered)
+    value: ${{ inputs.deliveryTarget == 'NuGet' && steps.deliver.outputs.manifestPath || '' }}
 runs:
   using: composite
   steps:

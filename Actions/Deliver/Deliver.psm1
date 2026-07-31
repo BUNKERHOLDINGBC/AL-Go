@@ -124,12 +124,14 @@ function Add-DeliveryManifestEntry {
 
     # Only packages which were actually pushed to the delivery target are part of the manifest
     if (-not $Pushed) {
-        return , $manifestEntries
+        Write-Output -NoEnumerate $manifestEntries
+        return
     }
 
     # Only production apps (from the Apps artifact folder) are part of the manifest
     if ($ArtifactType -ne 'Apps') {
-        return , $manifestEntries
+        Write-Output -NoEnumerate $manifestEntries
+        return
     }
 
     $manifestEntries += [PSCustomObject]@{
@@ -142,7 +144,7 @@ function Add-DeliveryManifestEntry {
         "deliveryTarget" = "$DeliveryTarget"
     }
 
-    return , $manifestEntries
+    Write-Output -NoEnumerate $manifestEntries
 }
 
 <#

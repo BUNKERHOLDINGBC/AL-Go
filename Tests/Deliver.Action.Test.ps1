@@ -19,7 +19,10 @@ Describe "Deliver Action Tests" {
 
     It 'Test action.yaml matches script' {
         $outputs = [ordered]@{
-            "manifestPath" = "Path to the local JSON manifest of the production apps delivered to NuGet (apps is empty if no packages were delivered)"
+            "manifestPath" = "Path to the local JSON manifest of the production apps delivered to NuGet (empty for non-NuGet deliveries; apps is empty if no packages were delivered)"
+        }
+        $outputValues = @{
+            "manifestPath" = "`${{ inputs.deliveryTarget == 'NuGet' && steps.deliver.outputs.manifestPath || '' }}"
         }
         $additionalSteps = @(
             '    - name: Publish NuGet delivery manifest'
@@ -30,7 +33,7 @@ Describe "Deliver Action Tests" {
             '        path: ${{ steps.deliver.outputs.manifestPath }}'
             '        if-no-files-found: error'
         )
-        YamlTest -scriptRoot $scriptRoot -actionName $actionName -actionScript $actionScript -outputs $outputs -additionalSteps $additionalSteps
+        YamlTest -scriptRoot $scriptRoot -actionName $actionName -actionScript $actionScript -outputs $outputs -outputValues $outputValues -additionalSteps $additionalSteps
     }
 
     # Call action

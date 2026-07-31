@@ -54,6 +54,7 @@ function YamlTest {
         [string] $actionName,
         [string] $actionScript,
         $outputs = @{},
+        $outputValues = @{},
         [string[]] $additionalSteps = @()
     )
 
@@ -119,7 +120,12 @@ function YamlTest {
         $outputs.Keys | ForEach-Object {
             $yaml.AppendLine("  $($_):") | Out-Null
             $yaml.AppendLine("    description: $($outputs."$_")") | Out-Null
-            $yaml.AppendLine("    value: `${{ steps.$($actionname.ToLowerInvariant()).outputs.$($_) }}") | Out-Null
+            if ($outputValues.ContainsKey($_)) {
+                $yaml.AppendLine("    value: $($outputValues[$_])") | Out-Null
+            }
+            else {
+                $yaml.AppendLine("    value: `${{ steps.$($actionname.ToLowerInvariant()).outputs.$($_) }}") | Out-Null
+            }
         }
     }
     $yaml.AppendLine("runs:") | Out-Null
