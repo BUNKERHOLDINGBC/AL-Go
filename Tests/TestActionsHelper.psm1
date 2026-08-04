@@ -53,7 +53,9 @@ function YamlTest {
         [string] $scriptRoot,
         [string] $actionName,
         [string] $actionScript,
-        $outputs = @{}
+        $outputs = @{},
+        $outputValues = @{},
+        [string[]] $additionalSteps = @()
     )
 
     $emptyActionScript = "function emptyAction {`n[CmdletBinding()]`nParam()`n}`n"
@@ -118,7 +120,12 @@ function YamlTest {
         $outputs.Keys | ForEach-Object {
             $yaml.AppendLine("  $($_):") | Out-Null
             $yaml.AppendLine("    description: $($outputs."$_")") | Out-Null
-            $yaml.AppendLine("    value: `${{ steps.$($actionname.ToLowerInvariant()).outputs.$($_) }}") | Out-Null
+            if ($outputValues.ContainsKey($_)) {
+                $yaml.AppendLine("    value: $($outputValues[$_])") | Out-Null
+            }
+            else {
+                $yaml.AppendLine("    value: `${{ steps.$($actionname.ToLowerInvariant()).outputs.$($_) }}") | Out-Null
+            }
         }
     }
     $yaml.AppendLine("runs:") | Out-Null
@@ -146,6 +153,9 @@ function YamlTest {
     $yaml.AppendLine("        `${{ github.action_path }}/../Invoke-AlGoAction.ps1 -ActionName `"$actionName`" -Action {") | Out-Null
     $yaml.AppendLine("          `${{ github.action_path }}/$actionName.ps1$parameterString") | Out-Null
     $yaml.AppendLine("        }") | Out-Null
+    $additionalSteps | ForEach-Object {
+        $yaml.AppendLine($_) | Out-Null
+    }
     $yaml.AppendLine("branding:") | Out-Null
     $yaml.AppendLine("  icon: terminal") | Out-Null
     $yaml.Append("  color: blue") | Out-Null

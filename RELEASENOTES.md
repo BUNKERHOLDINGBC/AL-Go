@@ -1,5 +1,37 @@
 ## v9.1
 
+### NuGet delivery manifest
+
+The `Deliver` action now writes a JSON manifest of the production apps that were actually delivered to NuGet and publishes it as the workflow artifact `ado-delivery-manifest-NuGet-<run ID>-<run attempt>`. The artifact is published for every NuGet delivery, including when no packages were delivered.
+
+Only apps from the `Apps` artifact folder are included. Test apps, dependencies, packages where the exact version already existed on the feed, packages that were skipped because the latest package on the feed was identical, and failed pushes are all excluded.
+
+The manifest uses this versioned envelope. `apps` is always an array and is empty when no packages were delivered.
+
+```json
+{
+  "schemaVersion": 1,
+  "repository": "<GITHUB_REPOSITORY>",
+  "runId": "<GITHUB_RUN_ID>",
+  "runAttempt": "<GITHUB_RUN_ATTEMPT>",
+  "headSha": "<GITHUB_SHA>",
+  "deliveryTarget": "NuGet",
+  "apps": [
+    {
+      "id": "...",
+      "name": "...",
+      "publisher": "...",
+      "version": "...",
+      "project": "...",
+      "packageName": "...",
+      "deliveryTarget": "NuGet"
+    }
+  ]
+}
+```
+
+The additive `manifestPath` action output remains available to steps in the same Deliver job, but it points to runner-local storage. Separate workflows, including `workflow_run` consumers, must download the published artifact instead. Existing standard AL-Go CI/CD workflows and callers that ignore `manifestPath` require no changes.
+
 ### Resilient Pull Request Status Check for large builds
 
 The Pull Request Status Check action no longer fails on builds with more than one page of jobs (more than 100 jobs). The jobs API call now uses `--slurp` so multi-page responses are parsed as a single JSON array (previously `gh api --paginate | ConvertFrom-Json` failed with "Invalid JSON primitive" when more than one page was returned). The call is also retried, and requests a smaller page size, to tolerate the intermittent HTTP 502 responses that the GitHub jobs endpoint returns for large builds.
